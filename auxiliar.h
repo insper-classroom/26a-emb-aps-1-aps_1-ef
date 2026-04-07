@@ -2,6 +2,7 @@
 #define AUXILIAR_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef enum {
     COR_VERMELHO = 0,
@@ -11,14 +12,22 @@ typedef enum {
     COR_NENHUMA
 } cor_t;
 
-/* Ajuste os pinos conforme a sua montagem */
-#define BTN_INICIO_PIN     12
 #define BTN_VERMELHO_PIN   6
 #define BTN_VERDE_PIN      7
 #define BTN_AZUL_PIN       8
 #define BTN_AMARELO_PIN    9
 
-/* Cores RGB565 */
+#define LED_VERMELHO_PIN   2
+#define LED_VERDE_PIN      3
+#define LED_AZUL_PIN       4
+#define LED_AMARELO_PIN    5
+
+#define LITE               15
+#define SCREEN_ROTATION    1
+
+#define LCD_LARGURA        320
+#define LCD_ALTURA         240
+
 #define LCD_COR_VERMELHO   0xF800
 #define LCD_COR_VERDE      0x07E0
 #define LCD_COR_AZUL       0x001F
@@ -26,19 +35,27 @@ typedef enum {
 #define LCD_COR_PRETO      0x0000
 #define LCD_COR_BRANCO     0xFFFF
 
-void inicializar_botoes(void);
-void inicializar_lcd(void);
+#define TAM_MAX_SEQUENCIA  100
 
-int botao_inicio_pressionado(void);
+void hardware_init_genius(void);
+
+void gerar_lista_aleatoria_cores(cor_t lista[], int tamanho);
+
 cor_t ler_botao_colorido(void);
 
-void lcd_preencher_preto(void);
+void leds_apagar_todos(void);
+void led_ligar(cor_t cor);
+void led_desligar(cor_t cor);
+void led_piscar(cor_t cor, uint32_t tempo_ms);
+
+void lcd_apagar(void);
 void lcd_mostrar_cor(cor_t cor);
 void lcd_mostrar_cor_tempo(cor_t cor, uint32_t tempo_ms);
 void lcd_mostrar_sequencia(const cor_t lista[], int tamanho, uint32_t tempo_cor_ms, uint32_t intervalo_ms);
-void lcd_efeito_erro(void);
-void lcd_efeito_vitoria(void);
 
-void gerar_lista_aleatoria_cores(cor_t lista[], int tamanho);
+void lcd_tela_inicio(void);
+void lcd_tela_rodada(int rodada);
+void lcd_tela_jogue(void);
+void lcd_tela_erro(void);
 
 #endif
