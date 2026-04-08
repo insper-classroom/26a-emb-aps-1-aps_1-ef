@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include "tft_lcd_ili9341/gfx/gfx_ili9341.h"
+#include "tft_lcd_ili9341/ili9341/ili9341.h"
+#include "tft_lcd_ili9341/touch_resistive/touch_resistive.h"
 
 #define TEMPO_COR_SEQUENCIA_MS   500
 #define INTERVALO_SEQUENCIA_MS   200
