@@ -1,5 +1,12 @@
 #include "pico/stdlib.h"
 #include "auxiliar.h"
+#include "hardware/gpio.h"
+#include "hardware/pwm.h"
+#include "hardware/irq.h"
+#include "hardware/clocks.h"
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #define TEMPO_COR_SEQUENCIA_MS   500
 #define INTERVALO_SEQUENCIA_MS   200

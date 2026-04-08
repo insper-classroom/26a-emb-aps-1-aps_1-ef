@@ -10,6 +10,13 @@
 #include "tft_lcd_ili9341/gfx/gfx_ili9341.h"
 #include "tft_lcd_ili9341/ili9341/ili9341.h"
 
+static volatile int tocando = 0;
+static volatile bool pausado = false;
+static volatile int wav_position = 0;
+
+static volatile const uint8_t *audio_ptr = audioEu;
+static volatile uint32_t audio_len = audioEu_len;
+
 static uint16_t cor_para_rgb565(cor_t cor) {
     switch (cor) {
         case COR_VERMELHO: return LCD_COR_VERMELHO;
@@ -49,10 +56,59 @@ static void lcd_escrever_linha(int x, int y, const char *texto, uint16_t cor_tex
     gfx_setTextColor(cor_texto);
     gfx_drawText(x, y, (char *)texto);
 }
+static void pwm_interrupt_handler(void) {
+    pwm_clear_irq(pwm_gpio_to_slice_num(AUDIO_PIN));
+
+    if (!tocando || pausado) {
+        pwm_set_gpio_level(AUDIO_PIN, 0);
+        return;
+    }
+
+    if (wav_position < ((int)audio_len << 3)) {
+        int sample = ((int)audio_ptr[wav_position >> 3] - 128) * 2 + 128;
+
+        if (sample < 0) sample = 0;
+        if (sample > 255) sample = 255;
+
+        pwm_set_gpio_level(AUDIO_PIN, (uint16_t)sample);
+        wav_position++;
+    } else {
+        tocando = 0;
+        wav_position = 0;
+        pwm_set_gpio_level(AUDIO_PIN, 0);
+    }
+}
+
+void audio_init_erro(void) {
+    set_sys_clock_khz(125000, true);
+
+    gpio_set_function(AUDIO_PIN, GPIO_FUNC_PWM);
+    int slice = pwm_gpio_to_slice_num(AUDIO_PIN);
+
+    pwm_clear_irq(slice);
+    pwm_set_irq_enabled(slice, true);
+    irq_set_exclusive_handler(PWM_IRQ_WRAP, pwm_interrupt_handler);
+    irq_set_enabled(PWM_IRQ_WRAP, true);
+
+    pwm_config config = pwm_get_default_config();
+    pwm_config_set_clkdiv(&config, 5.0f);
+    pwm_config_set_wrap(&config, 255);
+
+    pwm_init(slice, &config, true);
+    pwm_set_gpio_level(AUDIO_PIN, 0);
+}
+
+void tocar_audio_erro(void) {
+    audio_ptr = audioEu;
+    audio_len = audioEu_len;
+    wav_position = 0;
+    tocando = 1;
+    pausado = false;
+}
 
 void hardware_init_genius(void) {
     stdio_init_all();
-
+    audio_init_erro();
     gpio_init(BTN_VERMELHO_PIN);
     gpio_set_dir(BTN_VERMELHO_PIN, GPIO_IN);
     gpio_pull_up(BTN_VERMELHO_PIN);
@@ -206,6 +262,7 @@ void lcd_tela_jogue(void) {
 }
 
 void lcd_tela_erro(void) {
+    tocar_audio_erro();
     for (int i = 0; i < 3; i++) {
         gfx_fillRect(0, 0, LCD_LARGURA, LCD_ALTURA, LCD_COR_BRANCO);
         gpio_put(LED_VERMELHO_PIN, 1);

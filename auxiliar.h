@@ -11,16 +11,20 @@ typedef enum {
     COR_AMARELO,
     COR_NENHUMA
 } cor_t;
+#define AUDIO_PIN          13
 
-#define BTN_VERMELHO_PIN   6
-#define BTN_VERDE_PIN      7
-#define BTN_AZUL_PIN       8
-#define BTN_AMARELO_PIN    9
+void audio_init_erro(void);
+void tocar_audio_erro(void);
+
+#define BTN_VERMELHO_PIN   10
+#define BTN_VERDE_PIN      5
+#define BTN_AZUL_PIN       9
+#define BTN_AMARELO_PIN    7
 
 #define LED_VERMELHO_PIN   2
-#define LED_VERDE_PIN      3
-#define LED_AZUL_PIN       4
-#define LED_AMARELO_PIN    5
+#define LED_VERDE_PIN      4
+#define LED_AZUL_PIN       8
+#define LED_AMARELO_PIN    6
 
 #define LITE               15
 #define SCREEN_ROTATION    1
