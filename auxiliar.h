@@ -61,5 +61,7 @@ void lcd_tela_erro(void);
 
 void audio_init_erro(void);
 void tocar_audio_erro(void);
+void tocar_audio_perdeu(void);
+void tocar_audio_ganhou(void);
 
 #endif

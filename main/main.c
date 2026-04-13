@@ -52,6 +52,8 @@ int main(void) {
             continue;
         }
 
+        tocar_audio_ganhou();
+
         rodada_atual++;
 
         if (rodada_atual > TAM_MAX_SEQUENCIA) {

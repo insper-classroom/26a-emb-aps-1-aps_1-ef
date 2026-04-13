@@ -13,14 +13,21 @@
 #include "tft_lcd_ili9341/gfx/gfx_ili9341.h"
 #include "tft_lcd_ili9341/ili9341/ili9341.h"
 
-#include "audioEu.h"
+#include "main/audioPerdeu.h"
+#include "main/audioGanhou.h"
 
 static volatile int tocando = 0;
 static volatile bool pausado = false;
 static volatile int wav_position = 0;
 
-static volatile const uint8_t *audio_ptr = audioEu;
-static volatile uint32_t audio_len = audioEu_len;
+static volatile const uint8_t *audio_ptr = audioPerdeu;
+static volatile uint32_t audio_len = audioPerdeu_len;
+
+// Botões com IRQ + debounce (mesma lógica do exemplo funcional compartilhado)
+static volatile cor_t botao_pendente = COR_NENHUMA;
+static volatile bool botao_evento = false;
+static volatile uint32_t botao_ultimo_irq_ms = 0;
+static const uint32_t BOTAO_DEBOUNCE_MS = 180;
 
 static uint16_t cor_para_rgb565(cor_t cor) {
     switch (cor) {
@@ -45,6 +52,34 @@ static uint gpio_led_da_cor(cor_t cor) {
 static void lcd_escrever_linha(int x, int y, const char *texto, uint16_t cor_texto) {
     gfx_setTextColor(cor_texto);
     gfx_drawText(x, y, (char *)texto);
+}
+
+// Mapeia pino GPIO para cor
+static cor_t cor_por_gpio(uint gpio) {
+    if (gpio == BTN_VERMELHO_PIN) return COR_VERMELHO;
+    if (gpio == BTN_VERDE_PIN)    return COR_VERDE;
+    if (gpio == BTN_AZUL_PIN)     return COR_AZUL;
+    if (gpio == BTN_AMARELO_PIN)  return COR_AMARELO;
+    return COR_NENHUMA;
+}
+
+// IRQ de botões com debounce
+static void btn_callback(uint gpio, uint32_t events) {
+    if (!(events & GPIO_IRQ_EDGE_FALL)) {
+        return;
+    }
+
+    uint32_t agora = to_ms_since_boot(get_absolute_time());
+    if ((agora - botao_ultimo_irq_ms) < BOTAO_DEBOUNCE_MS) {
+        return;
+    }
+    botao_ultimo_irq_ms = agora;
+
+    cor_t cor = cor_por_gpio(gpio);
+    if (cor != COR_NENHUMA) {
+        botao_pendente = cor;
+        botao_evento = true;
+    }
 }
 
 static cor_t mapear_botao_pressionado(void) {
@@ -97,12 +132,24 @@ void audio_init_erro(void) {
     pwm_set_gpio_level(AUDIO_PIN, 0);
 }
 
-void tocar_audio_erro(void) {
-    audio_ptr = audioEu;
-    audio_len = audioEu_len;
+static void tocar_audio(const uint8_t *samples, uint32_t length) {
+    audio_ptr = samples;
+    audio_len = length;
     wav_position = 0;
     tocando = 1;
     pausado = false;
+}
+
+void tocar_audio_erro(void) {
+    tocar_audio(audioPerdeu, audioPerdeu_len);
+}
+
+void tocar_audio_perdeu(void) {
+    tocar_audio(audioPerdeu, audioPerdeu_len);
+}
+
+void tocar_audio_ganhou(void) {
+    tocar_audio(WAV_DATA, audio_Ganhou_LENGTH);
 }
 
 void hardware_init_genius(void) {
@@ -123,6 +170,18 @@ void hardware_init_genius(void) {
     gpio_init(BTN_AMARELO_PIN);
     gpio_set_dir(BTN_AMARELO_PIN, GPIO_IN);
     gpio_pull_up(BTN_AMARELO_PIN);
+
+    // IRQ para todos os botões (queda para GND)
+    gpio_set_irq_enabled_with_callback(
+        BTN_VERMELHO_PIN,
+        GPIO_IRQ_EDGE_FALL,
+        true,
+        &btn_callback
+    );
+    gpio_set_irq_enabled(BTN_VERDE_PIN, GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled(BTN_AZUL_PIN, GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled(BTN_AMARELO_PIN, GPIO_IRQ_EDGE_FALL, true);
+    irq_set_enabled(IO_IRQ_BANK0, true);
 
     gpio_init(LED_VERMELHO_PIN);
     gpio_set_dir(LED_VERMELHO_PIN, GPIO_OUT);
@@ -164,27 +223,39 @@ void gerar_lista_aleatoria_cores(cor_t lista[], int tamanho) {
 }
 
 cor_t ler_botao_colorido(void) {
-    cor_t cor = COR_NENHUMA;
+    // Espera por IRQ; se nao vier, faz polling de fallback
+    botao_evento = false;
+    botao_pendente = COR_NENHUMA;
 
-    while (cor == COR_NENHUMA) {
-        cor = mapear_botao_pressionado();
-        sleep_ms(5);
+    const uint32_t timeout_fallback_ms = 800;
+    uint32_t inicio = to_ms_since_boot(get_absolute_time());
+
+    while (true) {
+        if (botao_evento) {
+            cor_t cor = botao_pendente;
+            botao_evento = false;
+            botao_pendente = COR_NENHUMA;
+
+            while (mapear_botao_pressionado() != COR_NENHUMA) {
+                sleep_ms(5);
+            }
+            sleep_ms(20);
+            return cor;
+        }
+
+        if (to_ms_since_boot(get_absolute_time()) - inicio > timeout_fallback_ms) {
+            cor_t cor = mapear_botao_pressionado();
+            if (cor != COR_NENHUMA) {
+                sleep_ms(25);
+                while (mapear_botao_pressionado() != COR_NENHUMA) {
+                    sleep_ms(5);
+                }
+                sleep_ms(10);
+                return cor;
+            }
+        }
+        tight_loop_contents();
     }
-
-    sleep_ms(30);
-
-    cor = mapear_botao_pressionado();
-    if (cor == COR_NENHUMA) {
-        return COR_NENHUMA;
-    }
-
-    while (mapear_botao_pressionado() != COR_NENHUMA) {
-        sleep_ms(5);
-    }
-
-    sleep_ms(30);
-
-    return cor;
 }
 
 void leds_apagar_todos(void) {
@@ -276,7 +347,7 @@ void lcd_tela_jogue(void) {
 }
 
 void lcd_tela_erro(void) {
-    tocar_audio_erro();
+    tocar_audio_perdeu();
 
     for (int i = 0; i < 3; i++) {
         gfx_fillRect(0, 0, LCD_LARGURA, LCD_ALTURA, LCD_COR_BRANCO);
@@ -299,3 +370,4 @@ void lcd_tela_erro(void) {
     lcd_apagar();
     leds_apagar_todos();
 }
+
