@@ -6,9 +6,14 @@
 #include "pico/stdlib.h"
 #include "pico/time.h"
 #include "hardware/gpio.h"
+#include "hardware/pwm.h"
+#include "hardware/irq.h"
+#include "hardware/clocks.h"
 
 #include "tft_lcd_ili9341/gfx/gfx_ili9341.h"
 #include "tft_lcd_ili9341/ili9341/ili9341.h"
+
+#include "audioEu.h"
 
 static volatile int tocando = 0;
 static volatile bool pausado = false;
@@ -37,25 +42,19 @@ static uint gpio_led_da_cor(cor_t cor) {
     }
 }
 
-static bool botao_pressionado_com_debounce(uint gpio) {
-    if (gpio_get(gpio) == 0) {
-        sleep_ms(25);
-
-        if (gpio_get(gpio) == 0) {
-            while (gpio_get(gpio) == 0) {
-                sleep_ms(5);
-            }
-            sleep_ms(25);
-            return true;
-        }
-    }
-    return false;
-}
-
 static void lcd_escrever_linha(int x, int y, const char *texto, uint16_t cor_texto) {
     gfx_setTextColor(cor_texto);
     gfx_drawText(x, y, (char *)texto);
 }
+
+static cor_t mapear_botao_pressionado(void) {
+    if (gpio_get(BTN_VERMELHO_PIN) == 0) return COR_VERMELHO;
+    if (gpio_get(BTN_VERDE_PIN)    == 0) return COR_VERDE;
+    if (gpio_get(BTN_AZUL_PIN)     == 0) return COR_AZUL;
+    if (gpio_get(BTN_AMARELO_PIN)  == 0) return COR_AMARELO;
+    return COR_NENHUMA;
+}
+
 static void pwm_interrupt_handler(void) {
     pwm_clear_irq(pwm_gpio_to_slice_num(AUDIO_PIN));
 
@@ -83,7 +82,7 @@ void audio_init_erro(void) {
     set_sys_clock_khz(125000, true);
 
     gpio_set_function(AUDIO_PIN, GPIO_FUNC_PWM);
-    int slice = pwm_gpio_to_slice_num(AUDIO_PIN);
+    uint slice = pwm_gpio_to_slice_num(AUDIO_PIN);
 
     pwm_clear_irq(slice);
     pwm_set_irq_enabled(slice, true);
@@ -108,7 +107,7 @@ void tocar_audio_erro(void) {
 
 void hardware_init_genius(void) {
     stdio_init_all();
-    audio_init_erro();
+
     gpio_init(BTN_VERMELHO_PIN);
     gpio_set_dir(BTN_VERMELHO_PIN, GPIO_IN);
     gpio_pull_up(BTN_VERMELHO_PIN);
@@ -143,6 +142,8 @@ void hardware_init_genius(void) {
     gpio_set_dir(LITE, GPIO_OUT);
     gpio_put(LITE, 1);
 
+    audio_init_erro();
+
     LCD_initDisplay();
     LCD_setRotation(SCREEN_ROTATION);
 
@@ -163,12 +164,27 @@ void gerar_lista_aleatoria_cores(cor_t lista[], int tamanho) {
 }
 
 cor_t ler_botao_colorido(void) {
-    if (botao_pressionado_com_debounce(BTN_VERMELHO_PIN)) return COR_VERMELHO;
-    if (botao_pressionado_com_debounce(BTN_VERDE_PIN))    return COR_VERDE;
-    if (botao_pressionado_com_debounce(BTN_AZUL_PIN))     return COR_AZUL;
-    if (botao_pressionado_com_debounce(BTN_AMARELO_PIN))  return COR_AMARELO;
+    cor_t cor = COR_NENHUMA;
 
-    return COR_NENHUMA;
+    while (cor == COR_NENHUMA) {
+        cor = mapear_botao_pressionado();
+        sleep_ms(5);
+    }
+
+    sleep_ms(30);
+
+    cor = mapear_botao_pressionado();
+    if (cor == COR_NENHUMA) {
+        return COR_NENHUMA;
+    }
+
+    while (mapear_botao_pressionado() != COR_NENHUMA) {
+        sleep_ms(5);
+    }
+
+    sleep_ms(30);
+
+    return cor;
 }
 
 void leds_apagar_todos(void) {
@@ -188,12 +204,6 @@ void led_desligar(cor_t cor) {
     gpio_put(gpio_led_da_cor(cor), 0);
 }
 
-void led_piscar(cor_t cor, uint32_t tempo_ms) {
-    led_ligar(cor);
-    sleep_ms(tempo_ms);
-    led_desligar(cor);
-}
-
 void lcd_apagar(void) {
     gfx_fillRect(0, 0, LCD_LARGURA, LCD_ALTURA, LCD_COR_PRETO);
 }
@@ -203,23 +213,27 @@ void lcd_mostrar_cor(cor_t cor) {
 }
 
 void lcd_mostrar_cor_tempo(cor_t cor, uint32_t tempo_ms) {
+    leds_apagar_todos();
     lcd_mostrar_cor(cor);
     led_ligar(cor);
 
     sleep_ms(tempo_ms);
 
-    led_desligar(cor);
+    leds_apagar_todos();
     lcd_apagar();
 }
 
 void lcd_mostrar_sequencia(const cor_t lista[], int tamanho, uint32_t tempo_cor_ms, uint32_t intervalo_ms) {
     for (int i = 0; i < tamanho; i++) {
+        leds_apagar_todos();
+        lcd_apagar();
+
         lcd_mostrar_cor(lista[i]);
         led_ligar(lista[i]);
 
         sleep_ms(tempo_cor_ms);
 
-        led_desligar(lista[i]);
+        leds_apagar_todos();
         lcd_apagar();
 
         sleep_ms(intervalo_ms);
@@ -263,6 +277,7 @@ void lcd_tela_jogue(void) {
 
 void lcd_tela_erro(void) {
     tocar_audio_erro();
+
     for (int i = 0; i < 3; i++) {
         gfx_fillRect(0, 0, LCD_LARGURA, LCD_ALTURA, LCD_COR_BRANCO);
         gpio_put(LED_VERMELHO_PIN, 1);

@@ -77,7 +77,7 @@ void LCD_setSPIperiph(spi_inst_t *s)
 void initSPI()
 {
 	spi_init(ili9341_spi, 1000 * 40000);
-	spi_set_format(ili9341_spi, 16, SPI_CPOL_1, SPI_CPOL_1, SPI_MSB_FIRST);
+	spi_set_format(ili9341_spi, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_MSB_FIRST);
 	gpio_set_function(ili9341_pinSCK, GPIO_FUNC_SPI);
 	gpio_set_function(ili9341_pinTX, GPIO_FUNC_SPI);
 

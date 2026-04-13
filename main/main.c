@@ -1,15 +1,5 @@
 #include "pico/stdlib.h"
 #include "auxiliar.h"
-#include "hardware/gpio.h"
-#include "hardware/pwm.h"
-#include "hardware/irq.h"
-#include "hardware/clocks.h"
-#include <stdio.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include "tft_lcd_ili9341/gfx/gfx_ili9341.h"
-#include "tft_lcd_ili9341/ili9341/ili9341.h"
-#include "tft_lcd_ili9341/touch_resistive/touch_resistive.h"
 
 #define TEMPO_COR_SEQUENCIA_MS   500
 #define INTERVALO_SEQUENCIA_MS   200
@@ -28,7 +18,6 @@ int main(void) {
 
     hardware_init_genius();
     lcd_tela_inicio();
-
     iniciar_novo_jogo(sequencia, &rodada_atual);
 
     while (true) {
@@ -46,12 +35,7 @@ int main(void) {
         bool errou = false;
 
         for (int i = 0; i < rodada_atual; i++) {
-            cor_t botao = COR_NENHUMA;
-
-            while (botao == COR_NENHUMA) {
-                botao = ler_botao_colorido();
-                sleep_ms(10);
-            }
+            cor_t botao = ler_botao_colorido();
 
             lcd_mostrar_cor_tempo(botao, TEMPO_COR_JOGADOR_MS);
 

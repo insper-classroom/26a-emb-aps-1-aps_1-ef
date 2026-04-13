@@ -37,6 +37,7 @@ pico_sdk_init()
 
 add_executable(ili9341
     main/main.c
+    auxiliar.c
 
     # ILI9341 driver
     tft_lcd_ili9341/ili9341/ili9341.c
@@ -67,14 +68,15 @@ target_link_libraries(ili9341
     pico_stdlib
     hardware_spi
     hardware_adc
+    hardware_pwm
 )
 
 # =========================
 # STDIO
 # =========================
 
-pico_enable_stdio_uart(ili9341 1)
-pico_enable_stdio_usb(ili9341 0)
+pico_enable_stdio_uart(ili9341 0)
+pico_enable_stdio_usb(ili9341 1)
 
 # =========================
 # Outputs
