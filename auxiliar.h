@@ -63,5 +63,6 @@ void audio_init_erro(void);
 void tocar_audio_erro(void);
 void tocar_audio_perdeu(void);
 void tocar_audio_ganhou(void);
+bool audio_tocando(void);
 
 #endif

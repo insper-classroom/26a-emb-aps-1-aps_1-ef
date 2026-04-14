@@ -152,6 +152,10 @@ void tocar_audio_ganhou(void) {
     tocar_audio(WAV_DATA, audio_Ganhou_LENGTH);
 }
 
+bool audio_tocando(void) {
+    return tocando != 0;
+}
+
 void hardware_init_genius(void) {
     stdio_init_all();
 

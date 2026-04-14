@@ -46,13 +46,24 @@ int main(void) {
         }
 
         if (errou) {
+            tocar_audio_perdeu();
             lcd_tela_erro();
-            sleep_ms(PAUSA_REINICIO_MS);
+            
+            // Espera o áudio terminar antes de reiniciar
+            while (audio_tocando()) {
+                sleep_ms(10); // Pequena pausa para não sobrecarregar a CPU
+            }
+            
             iniciar_novo_jogo(sequencia, &rodada_atual);
             continue;
         }
 
         tocar_audio_ganhou();
+
+        // Espera o áudio terminar antes de continuar
+        while (audio_tocando()) {
+            sleep_ms(10); // Pequena pausa para não sobrecarregar a CPU
+        }
 
         rodada_atual++;
 
