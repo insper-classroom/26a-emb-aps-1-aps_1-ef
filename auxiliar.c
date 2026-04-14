@@ -226,7 +226,7 @@ void gerar_lista_aleatoria_cores(cor_t lista[], int tamanho) {
     }
 }
 
-cor_t ler_botao_colorido(void) {
+cor_t ler_botao_colorido(uint32_t timeout_ms) {
     // Espera por IRQ; se nao vier, faz polling de fallback
     botao_evento = false;
     botao_pendente = COR_NENHUMA;
@@ -247,7 +247,12 @@ cor_t ler_botao_colorido(void) {
             return cor;
         }
 
-        if (to_ms_since_boot(get_absolute_time()) - inicio > timeout_fallback_ms) {
+        uint32_t agora = to_ms_since_boot(get_absolute_time());
+        if ((agora - inicio) > timeout_ms) {
+            return COR_NENHUMA;
+        }
+
+        if ((agora - inicio) > timeout_fallback_ms) {
             cor_t cor = mapear_botao_pressionado();
             if (cor != COR_NENHUMA) {
                 sleep_ms(25);
@@ -327,6 +332,28 @@ void lcd_tela_inicio(void) {
     lcd_apagar();
 }
 
+modo_t lcd_tela_modo(void) {
+    lcd_apagar();
+    gfx_setTextSize(2);
+
+    lcd_escrever_linha(40, 40, "SELECIONE O MODO", LCD_COR_BRANCO);
+    lcd_escrever_linha(40, 90, "VERDE = FACIL", LCD_COR_VERDE);
+    lcd_escrever_linha(40, 130, "VERMELHO = DIFICIL", LCD_COR_VERMELHO);
+    lcd_escrever_linha(40, 170, "AMARELO = FACIL", LCD_COR_AMARELO);
+
+    while (true) {
+        cor_t botao = ler_botao_colorido(UINT32_MAX);
+        if (botao == COR_VERDE || botao == COR_AMARELO) {
+            lcd_apagar();
+            return MODO_FACIL;
+        }
+        if (botao == COR_VERMELHO || botao == COR_AZUL) {
+            lcd_apagar();
+            return MODO_DIFICIL;
+        }
+    }
+}
+
 void lcd_tela_rodada(int rodada) {
     char buffer[32];
 
@@ -340,6 +367,26 @@ void lcd_tela_rodada(int rodada) {
     lcd_apagar();
 }
 
+void lcd_tela_rodada_pontuacao(int rodada, int pontuacao, modo_t modo) {
+    char buffer[32];
+
+    lcd_apagar();
+    gfx_setTextSize(2);
+
+    snprintf(buffer, sizeof(buffer), "RODADA %d", rodada);
+    lcd_escrever_linha(60, 80, buffer, LCD_COR_BRANCO);
+
+    snprintf(buffer, sizeof(buffer), "PONTOS %d", pontuacao);
+    lcd_escrever_linha(60, 115, buffer, LCD_COR_AMARELO);
+
+    const char *modo_texto = (modo == MODO_FACIL) ? "FACIL" : "DIFICIL";
+    uint16_t modo_cor = (modo == MODO_FACIL) ? LCD_COR_VERDE : LCD_COR_VERMELHO;
+    lcd_escrever_linha(60, 150, modo_texto, modo_cor);
+
+    sleep_ms(900);
+    lcd_apagar();
+}
+
 void lcd_tela_jogue(void) {
     lcd_apagar();
     gfx_setTextSize(2);
@@ -350,7 +397,7 @@ void lcd_tela_jogue(void) {
     lcd_apagar();
 }
 
-void lcd_tela_erro(void) {
+void lcd_tela_erro(int pontuacao) {
     tocar_audio_perdeu();
 
     for (int i = 0; i < 3; i++) {
@@ -369,8 +416,13 @@ void lcd_tela_erro(void) {
     }
 
     gfx_setTextSize(2);
-    lcd_escrever_linha(110, 105, "ERROU", LCD_COR_VERMELHO);
-    sleep_ms(900);
+    lcd_escrever_linha(110, 85, "ERROU", LCD_COR_VERMELHO);
+
+    char buffer[32];
+    snprintf(buffer, sizeof(buffer), "PONTOS %d", pontuacao);
+    lcd_escrever_linha(80, 120, buffer, LCD_COR_AMARELO);
+
+    sleep_ms(1200);
     lcd_apagar();
     leds_apagar_todos();
 }

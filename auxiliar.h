@@ -12,6 +12,11 @@ typedef enum {
     COR_NENHUMA
 } cor_t;
 
+typedef enum {
+    MODO_FACIL = 0,
+    MODO_DIFICIL
+} modo_t;
+
 #define BTN_VERMELHO_PIN   10
 #define BTN_VERDE_PIN      5
 #define BTN_AZUL_PIN       9
@@ -43,7 +48,7 @@ void hardware_init_genius(void);
 
 void gerar_lista_aleatoria_cores(cor_t lista[], int tamanho);
 
-cor_t ler_botao_colorido(void);
+cor_t ler_botao_colorido(uint32_t timeout_ms);
 
 void leds_apagar_todos(void);
 void led_ligar(cor_t cor);
@@ -55,9 +60,11 @@ void lcd_mostrar_cor_tempo(cor_t cor, uint32_t tempo_ms);
 void lcd_mostrar_sequencia(const cor_t lista[], int tamanho, uint32_t tempo_cor_ms, uint32_t intervalo_ms);
 
 void lcd_tela_inicio(void);
+modo_t lcd_tela_modo(void);
 void lcd_tela_rodada(int rodada);
+void lcd_tela_rodada_pontuacao(int rodada, int pontuacao, modo_t modo);
 void lcd_tela_jogue(void);
-void lcd_tela_erro(void);
+void lcd_tela_erro(int pontuacao);
 
 void audio_init_erro(void);
 void tocar_audio_erro(void);
