@@ -33,7 +33,7 @@ typedef enum {
 #define LCD_COR_VERMELHO   0xF800
 #define LCD_COR_VERDE      0x07E0
 #define LCD_COR_AZUL       0x001F
-#define LCD_COR_AMARELO    0xFFE0
+#define LCD_COR_AMARELO    0xFFE0 // amarelo mais quente, menos esverdeado
 #define LCD_COR_PRETO      0x0000
 #define LCD_COR_BRANCO     0xFFFF
 
