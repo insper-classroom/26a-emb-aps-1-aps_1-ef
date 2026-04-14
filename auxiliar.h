@@ -17,12 +17,12 @@ typedef enum {
 #define BTN_AZUL_PIN       9
 #define BTN_AMARELO_PIN    7
 
-#define LED_VERMELHO_PIN   2
-#define LED_VERDE_PIN      4
+#define LED_VERMELHO_PIN   13
+#define LED_VERDE_PIN      2
 #define LED_AZUL_PIN       8
-#define LED_AMARELO_PIN    6
+#define LED_AMARELO_PIN    4
 
-#define AUDIO_PIN          26
+#define AUDIO_PIN          28
 
 #define LITE               15
 #define SCREEN_ROTATION    1
